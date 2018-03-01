@@ -1,0 +1,153 @@
+#!/bin/bash
+
+#
+# Theodore Nowak
+# tsnowak@umich.edu
+# 03/01/2018
+#
+
+# USAGE:
+# This script should determine whether I am at home or away
+# in order to correctly use a given ssh config host
+#
+# DEPENDENCIES:
+# wireless-tools
+# network-manager
+#
+# ARGUMENTS:
+# INPUT:	None
+# RETURNS:	0 if at home
+#			      1 if not at home
+#
+# ASSUMPTIONS:
+# The GNU kernel has requisite wifi and eth tools installed
+# Mac OSX kernel is always named Darwin. Local IPs are of structure
+# $MY_WIFI_PATT. Wifi network is named $MY_SSID. Linux nor Mac OSX
+# commands change...
+#
+# EXAMPLE USAGE CASE .SSH/CONFIG FILE:
+#________________________________________
+# Match originalhost mycomputer exec verify_local_network
+#	HostName 192.168.0.101
+#	User myusername
+#	Port 1234
+
+# Host mycomputer
+#     HostName 12.123.123.12
+#     User myusername
+#     Port 4321
+#________________________________________
+
+# TODO:
+# Correct the way we get the eth0 for linux. Assumes that the first ethernet device
+# that is connected is the ethernet connection
+
+# -- Failure cases --
+# Linux computer or laptop with multiple ethernet devices/connections
+# that are connected, at home not being detected as at home.
+
+
+# Home wifi network SSID (I'm giving you a golden name here) and wifi ip pattern
+#
+MY_SSID="IP_UP_WEP_TOGETHER-WIFI"
+MY_WIFI_PATT="192.168.0."
+
+# Determine if the OS is WSL (no network tools), GNU linux, or MacOSX.
+# Otherwise, NO SOUP FOR YOU. Order matters a bit here.
+#
+if uname -a | grep -Fq "Microsoft"; then
+    OS="wsl"
+elif uname -a | grep -Fq "Darwin"; then
+    OS="mac"
+elif uname -a | grep -Fq "GNU"; then
+    OS="linux"
+else
+    echo "OS is not WSL, GNU Linux, nor MacOSX. Your tin can is not supported!"
+    exit 1
+fi
+
+## Get ethernet and wifi IP addresses for each case
+##
+case $OS in
+    #----------------------------------------
+    # LINUX CASE
+    #----------------------------------------
+    linux)
+    # iwgetid will ouput the wifi network name and which network it is
+    # connected to
+    WIFI_DEV=$(iwgetid | awk '{print $1}')
+
+    # nmcli will output the network device statuses (ethernet, wifi, etc)
+    # NOTE: I stupidly assume the first entry that is ethernet and connected
+    # is the ethernet device in use... (Sorry dawg)
+    ETH_DEV=$(nmcli dev status | grep -E 'ethernet.*connected' | head -1 | \
+    awk '{print $1}')
+
+    # run ifconfig, get block of text pertaining to the ETH_DEV and WIFI_DEV
+    # then get the inet_addr from each (it looks scary because it is)
+    ETH_ADDR=$(/sbin/ifconfig | awk -v RS="" -v module="$ETH_DEV" \
+    '$0 ~ module' | grep -F 'inet addr:' | cut -d: -f2 | awk '{print $1}');
+    WIFI_ADDR=$(/sbin/ifconfig | awk -v RS="" -v module="$WIFI_DEV" \
+    '$0 ~ module' | grep -F 'inet addr:' | cut -d: -f2 | awk '{print $1}');
+
+    # if the ETH_ADDR contains the right values
+    # OR if the WIFI_ADDR contains the right values,
+    # AND the SSID name is correct... WE AT HOME!
+    if [ "$(echo "$ETH_ADDR" | grep -Fo "$MY_WIFI_PATT")" == "$MY_WIFI_PATT" ] \
+    || ([ "$(echo "$WIFI_ADDR"| grep -Fo "$MY_WIFI_PATT")" == "$MY_WIFI_PATT" ] \
+    && [ "$(iwgetid -r | grep -Fo "$MY_SSID")" == "$MY_SSID" ]); then
+        # then we're at home!
+        exit 0;
+    else
+        # otherwise we're not home :/
+        exit 1;
+    fi
+    ;;
+    #----------------------------------------
+    # MACOSX CASE
+    #----------------------------------------
+    mac)
+    # can't do same thing with Mac because no newline between ifconfig entries
+    ETH_ADDR=$(ipconfig getifaddr en0);
+    WIFI_ADDR=$(ipconfig getifaddr en1);
+
+    # get SSID we're currently connected to
+    SSID=$(/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I | \
+    awk '/ SSID/ {print substr($0, index($0, $2))}');
+
+    # if the ETH_ADDR contains the right values
+    # OR if the WIFI_ADDR contains the right values,
+    # AND the SSID name is correct... WE AT HOME!
+    if [ "$(echo "$ETH_ADDR" | grep -Fo "$MY_WIFI_PATT")" == "$MY_WIFI_PATT" ] \
+    || ([ "$(echo "$WIFI_ADDR" | grep -Fo "$MY_WIFI_PATT")" == "$MY_WIFI_PATT" ] \
+    && [ "$(echo "$SSID" | grep -Fo "$MY_SSID")" == "$MY_SSID" ]); then
+        # then we're at home!
+        exit 0;
+    else
+        # otherwise we're not home :/
+        exit 1;
+    fi
+    ;;
+    #----------------------------------------
+    # WSL CASE
+    #----------------------------------------
+    wsl)
+    # TODO: WSL doesn't support networking access, and I can't find a way to
+    #       get the SSID of the currently connected network
+    #       Also I'm only doing WIFI_DEV named wifi0 right now... cough cough*
+    #       DON'T JUDGE ME, IT WORKS ON MY SURFACE PRO
+    # STUPID ASSUMPTION: As such if you're behind a $MY_WIFI_PATT network we're
+    #                   assuming you're home :D
+    WIFI_ADDR=$(/sbin/ifconfig | awk -v RS="" -v module="wifi0" \
+    '$0 ~ module' | grep -F 'inet addr:' | cut -d: -f2 | \
+    awk '{print $1}');
+
+    if [ "$(echo "$WIFI_ADDR" | grep -Fo "$MY_WIFI_PATT")" == "$MY_WIFI_PATT" ]
+    then
+        # then we're at home!
+        exit 0;
+    else
+        # otherwise we're not home :/
+        exit 1;
+    fi
+esac
