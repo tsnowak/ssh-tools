@@ -1,0 +1,17 @@
+Match originalhost revival exec /usr/local/bin/verify_local_network
+	HostName 192.168.0.102
+	User tsnowak
+	Port 2222
+    IdentityFile /home/tsnowak/.ssh/id_rsa
+
+Host revival
+ 	HostName 68.40.191.226
+	User tsnowak
+	Port 4864
+    IdentityFile /home/tsnowak/.ssh/id_rsa
+
+Host revival
+ 	HostName 68.40.191.226
+	User harpo
+	Port 4864
+    IdentityFile /home/tsnowak/.ssh/id_rsa
