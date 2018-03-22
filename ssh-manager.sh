@@ -139,8 +139,33 @@ GET_CONFIG_PARAGRAPH() {
     #echo $y
     x=`eval "expr \"$y\" "`
     #echo $2=$x
-    eval "$4=\"$(cat ~/.ssh/config | awk -v RS="" -v expr="$1$2" \
+    # TODO change config to ~/.ssh/config
+    eval "$4=\"$(cat config | awk -v RS="" -v expr="$1$2" \
     -v user="User $3" '{ if ($0 ~ expr && $0 ~ user) print$0 }')\""
+}
+
+# Removes Host and Match cases for computer+user from config and creates .bak
+REMOVE_CONFIG_PARAGRAPHS() {
+
+    # TODO change config
+    FILE="config"
+
+    HOST_EXPR="Host "
+    MATCH_EXPR="Match originalhost "
+
+    cp $FILE $FILE.bak
+
+    if [ -f $FILE.tmp ]; then
+        rm $FILE.tmp
+    fi
+
+    # if the expression is not in the paragraph, append it to $FILE.tmp
+    awk -v RS="" -v expr1="$HOST_EXPR$1" -v expr2="$MATCH_EXPR$1" \
+    -v user="User $2" \
+    '{ if (! (($0 ~ expr1 || $0 ~ expr2) && $0 ~ user)) print$0 "\n"}' \
+    $FILE >> $FILE.tmp
+
+    mv $FILE.tmp $FILE
 }
 
 INITIALIZE_SPACE() {
@@ -243,29 +268,29 @@ GATHER_INFORMATION() {
 UPDATE_CONFIG_FILE() {
     SED="$(which sed)"
 
+    HOST_PARAGRAPH=""
+    MATCH_PARAGRAPH=""
+
+    INPUT="Host "
+    GET_CONFIG_PARAGRAPH "$INPUT" "$COMPUTER" "$USER" HOST_PARAGRAPH
+    INPUT="Match originalhost "
+    GET_CONFIG_PARAGRAPH "$INPUT" "$COMPUTER" "$USER" MATCH_PARAGRAPH
+
     # Take out in final
-    HOST="Host "
-    GET_CONFIG_PARAGRAPH "$HOST" "$COMPUTER" "$USER" HOST_PARAGRAPH
-    MATCH="Match originalhost "
-    GET_CONFIG_PARAGRAPH "$MATCH" "$COMPUTER" "$USER" MATCH_PARAGRAPH
+    REMOVE_CONFIG_PARAGRAPHS "$COMPUTER" "$USER"
 
     REPLACEMENT_MATCH="Match originalhost $COMPUTER exec $VERIFY_NETWORK_CMD\n\tHostName $LOC_IP\n\tUser $USER\n\tPort $LOC_PORT\n\tIdentityFile $KEY_FILE\n"
     REPLACEMENT_HOST="Host $COMPUTER\n\tHostName $PUB_IP\n\tUser $USER\n\tPort $PUB_PORT\n\tIdentityFile $KEY_FILE\n"
 
-    if [ ! -z "$HOST_PARAGRAPH" ]; then
-        # remove paragraph
-        grep -vwx "$HOST_PARAGRAPH" config
-    fi
-    # add to end
-    #printf "$REPLACEMENT_HOST" >> config
-
     if [ ! -z "$MATCH_PARAGRAPH" ]; then
-        # remove paragraph
-        #sed -i.bkp "/$MATCH_PARAGRAPH/d" config
-        echo "fuck"
+        printf "$REPLACEMENT_MATCH" >> config
+        echo "" >> config
     fi
-    # add above Host $COMPUTER paragraph
-    #sed -i.bkp "/$REPLACEMENT_HOST/i $REPLACEMENT_MATCH" config
+
+    if [ ! -z "$HOST_PARAGRAPH" ]; then
+        printf "$REPLACEMENT_HOST" >> config
+        echo "" >> config
+    fi
 }
 
 COMPUTER="revival"
