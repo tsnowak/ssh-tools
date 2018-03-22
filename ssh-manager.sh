@@ -87,6 +87,20 @@
 # -> make keyfile (or use) specified in config paragraph
 # -> add to authorized_keys
 
+
+COMPUTER=""
+USER=""
+LOC_IP=""
+LOC_PORT=""
+PUB_IP=""
+PUB_PORT=""
+
+LOCAL="false"
+KEY_PATH=""
+SSH_COMMAND=""
+
+VERIFY_NETWORK_CMD=/usr/local/bin/verify_local_network
+
 # Arguments:
 # 1: Query yes/no question sentence (ex: "$QUERY")
 # 2: Boolean response variable (ex: LOCAL)
@@ -134,13 +148,15 @@ REQUEST() {
 # 3: Variable in which to store read paragraph (ex: PARAGRAPH)
 GET_CONFIG_PARAGRAPH() {
 
+    FILE=~/.ssh/config
+
     # dereference variable
     y=\$"$4"
     #echo $y
     x=`eval "expr \"$y\" "`
     #echo $2=$x
     # TODO change config to ~/.ssh/config
-    eval "$4=\"$(cat config | awk -v RS="" -v expr="$1$2" \
+    eval "$4=\"$(cat $FILE | awk -v RS="" -v expr="$1$2" \
     -v user="User $3" '{ if ($0 ~ expr && $0 ~ user) print$0 }')\""
 }
 
@@ -148,7 +164,7 @@ GET_CONFIG_PARAGRAPH() {
 REMOVE_CONFIG_PARAGRAPHS() {
 
     # TODO change config
-    FILE="config"
+    FILE=~/.ssh/config
 
     HOST_EXPR="Host "
     MATCH_EXPR="Match originalhost "
@@ -268,6 +284,8 @@ GATHER_INFORMATION() {
 UPDATE_CONFIG_FILE() {
     SED="$(which sed)"
 
+    FILE=~/.ssh/config
+
     HOST_PARAGRAPH=""
     MATCH_PARAGRAPH=""
 
@@ -279,27 +297,85 @@ UPDATE_CONFIG_FILE() {
     # Take out in final
     REMOVE_CONFIG_PARAGRAPHS "$COMPUTER" "$USER"
 
-    REPLACEMENT_MATCH="Match originalhost $COMPUTER exec $VERIFY_NETWORK_CMD\n\tHostName $LOC_IP\n\tUser $USER\n\tPort $LOC_PORT\n\tIdentityFile $KEY_FILE\n"
-    REPLACEMENT_HOST="Host $COMPUTER\n\tHostName $PUB_IP\n\tUser $USER\n\tPort $PUB_PORT\n\tIdentityFile $KEY_FILE\n"
+    REPLACEMENT_MATCH="Match originalhost $COMPUTER exec $VERIFY_NETWORK_CMD\n\tHostName $LOC_IP\n\tUser $USER\n\tPort $LOC_PORT\n\tIdentityFile $KEY_PATH\n"
+    REPLACEMENT_HOST="Host $COMPUTER\n\tHostName $PUB_IP\n\tUser $USER\n\tPort $PUB_PORT\n\tIdentityFile $KEY_PATH\n"
 
-    if [ ! -z "$MATCH_PARAGRAPH" ]; then
-        printf "$REPLACEMENT_MATCH" >> config
-        echo "" >> config
+    if [ $LOCAL ]; then
+        printf "$REPLACEMENT_MATCH" >> $FILE
+        echo "" >> $FILE
     fi
 
-    if [ ! -z "$HOST_PARAGRAPH" ]; then
-        printf "$REPLACEMENT_HOST" >> config
-        echo "" >> config
+    printf "$REPLACEMENT_HOST" >> $FILE
+    echo "" >> $FILE
+}
+
+ADD_COMPUTER() {
+
+    INITIALIZE_SPACE
+
+    GATHER_INFORMATION
+    UPDATE_AUTHORIZED_KEYS
+
+    UPDATE_CONFIG_FILE
+
+}
+
+# TODO should this clean key and authorized_keys file? Meh...
+REMOVE_COMPUTER() {
+
+    PROCEED="false"
+
+    # it'd be cool to time this and only show the warning if this was completed
+    # hastily
+    QUERY="Enter the name of the computer you want to remove and press [ENTER]: "
+    REQUEST "$QUERY" COMPUTER
+
+    QUERY="Enter the username on $COMPUTER that you want to remove and press [ENTER]: "
+    REQUEST "$QUERY" USER
+
+    WARNING="This will remove all config entries pertaining to $COMPUTER and $USER. Proceed? [y/N] "
+    YES_NO "$WARNING" PROCEED
+
+    if $PROCEED; then
+        REMOVE_CONFIG_PARAGRAPHS "$COMPUTER" "$USER"
+    else
+        exit 1
     fi
 }
 
-COMPUTER="revival"
-USER="tsnowak"
-PUB_IP="68.40.191.226"
-PUB_PORT="4864"
-LOC_IP="192.168.0.102"
-LOC_PORT="2222"
-#GATHER_INFORMATION
-#UPDATE_AUTHORIZED_KEYS
-UPDATE_CONFIG_FILE
-echo "$COMPUTER $USER $PUB_IP $PUB_PORT $LOC_IP $LOC_PORT"
+# Output help text
+HELP() {
+    printf "\nUsage:\n";
+    printf "[]\t\tRun with no arguments to begin adding user.\n"
+    printf "[-a]\t\tAdd a config entry, ssh-key, and append to authorized_keys.\n"
+    printf "[-r]\t\tRemove a User\Computer combination from the config file.\n"
+    printf "[-h]\t\tOutputs help text.\n\n";
+}
+
+## Flags
+##
+while getopts 'arh' flag; do
+  case "${flag}" in
+    a)
+        ADD_COMPUTER
+        exit 0
+        ;;
+    r)
+        REMOVE_COMPUTER
+        exit 0
+        ;;
+    h)
+        HELP
+        exit 0
+        ;;
+    \?)
+        #printf "Invalid option: -${OPTARG}\n" >&1;
+        HELP
+        exit 1
+        ;;
+  esac
+done
+
+if [ $OPTIND -eq 1 ]; then
+    ADD_COMPUTER
+fi
