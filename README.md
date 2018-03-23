@@ -1,0 +1,35 @@
+`verify_local_network` distinguishes whether you are sshing from within a local 
+network to make properly route the connection.
+
+`ssh-manager.sh` helps add and remove `~/.ssh/config` entries and ssh-keys both 
+locally and remotely. 
+
+Together these two scripts make storing credentials for sshing to multiple 
+computers a piece of cake.
+
+Their usage is described below.
+
+# verify_local_host
+
+```
+sudo cp verify_local_host /usr/local/bin/.
+```
+
+This is used by the `ssh-manager.sh` script. It returns true when you are 
+behind a local network, and false otherwise.
+
+# ssh-manager.sh
+
+You may want to copy this to a location where it can be easily called, but is 
+not necessary.
+
+### Usage
+
+```
+./ssh-manager.sh        # adds a computer
+./ssh-manager.sh -a     # adds a computer
+./ssh-manager.sh -r     # removes a computer
+./ssh-manager.sh -h     # returns the help message
+```
+
+You will be prompted for information as required.
