@@ -35,5 +35,5 @@ called, but is not necessary.
 ./ssh-manager.sh -h     # returns the help message
 ```
 
-The script will prompot you with information needed to create the 
+The script will prompt you with information needed to create the 
 `~/.ssh/config` entry.
