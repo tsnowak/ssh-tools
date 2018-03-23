@@ -11,6 +11,9 @@ Their usage is described below.
 
 # verify_local_host
 
+`ssh-manager.sh` expects the `verify_local_host` script to be in 
+`usr/local/bin`.
+
 ```
 sudo cp verify_local_host /usr/local/bin/.
 ```
@@ -20,8 +23,8 @@ behind a local network, and false otherwise.
 
 # ssh-manager.sh
 
-You may want to copy this to a location where it can be easily called, but is 
-not necessary.
+You may want to copy `ssh-manager.sh` to a location where it can be easily 
+called, but is not necessary.
 
 ### Usage
 
@@ -32,4 +35,5 @@ not necessary.
 ./ssh-manager.sh -h     # returns the help message
 ```
 
-You will be prompted for information as required.
+The script will prompot you with information needed to create the 
+`~/.ssh/config` entry.
