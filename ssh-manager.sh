@@ -181,6 +181,8 @@ REMOVE_CONFIG_PARAGRAPHS() {
     '{ if (! (($0 ~ expr1 || $0 ~ expr2) && $0 ~ user)) print$0 "\n"}' \
     $FILE >> $FILE.tmp
 
+    chmod 600 $FILE.tmp
+
     mv $FILE.tmp $FILE
 }
 
@@ -300,13 +302,14 @@ UPDATE_CONFIG_FILE() {
     REPLACEMENT_MATCH="Match originalhost $COMPUTER exec $VERIFY_NETWORK_CMD\n\tHostName $LOC_IP\n\tUser $USER\n\tPort $LOC_PORT\n\tIdentityFile $KEY_PATH\n"
     REPLACEMENT_HOST="Host $COMPUTER\n\tHostName $PUB_IP\n\tUser $USER\n\tPort $PUB_PORT\n\tIdentityFile $KEY_PATH\n"
 
-    if [ $LOCAL ]; then
+    if $LOCAL; then
         printf "$REPLACEMENT_MATCH" >> $FILE
         echo "" >> $FILE
     fi
 
     printf "$REPLACEMENT_HOST" >> $FILE
     echo "" >> $FILE
+
 }
 
 ADD_COMPUTER() {
