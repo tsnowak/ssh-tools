@@ -49,7 +49,7 @@
 
 # Home wifi network SSID (I'm giving you a golden name here) and wifi ip pattern
 #
-MY_SSID="IP_UP_WEP_TOGETHER-WIFI"
+MY_SSID="IP'd_In_The_Cheerios_5G"
 MY_WIFI_PATT="192.168.0."
 
 # Determine if the OS is WSL (no network tools), GNU linux, or MacOSX.
@@ -85,17 +85,24 @@ case $OS in
 
     # run ifconfig, get block of text pertaining to the ETH_DEV and WIFI_DEV
     # then get the inet_addr from each (it looks scary because it is)
+
+    # TODO: 
+    # no longer 'inet addr:' in 18.04, but rather 'inet '
     ETH_ADDR=$(/sbin/ifconfig | awk -v RS="" -v module="$ETH_DEV" \
     '$0 ~ module' | grep -F 'inet addr:' | cut -d: -f2 | awk '{print $1}');
+    #ETH_ADDR=$(/sbin/ifconfig | awk -v RS="" -v module="$ETH_DEV" \
+    #'$0 ~ module' | grep -F 'inet ' | awk '{print $2}');
     WIFI_ADDR=$(/sbin/ifconfig | awk -v RS="" -v module="$WIFI_DEV" \
     '$0 ~ module' | grep -F 'inet addr:' | cut -d: -f2 | awk '{print $1}');
+    #WIFI_ADDR=$(/sbin/ifconfig | awk -v RS="" -v module="$WIFI_DEV" \
+    #'$0 ~ module' | grep -F 'inet ' | awk '{print $2}');
 
     # if the ETH_ADDR contains the right values
     # OR if the WIFI_ADDR contains the right values,
     # AND the SSID name is correct... WE AT HOME!
     if [ "$(echo "$ETH_ADDR" | grep -Fo "$MY_WIFI_PATT")" == "$MY_WIFI_PATT" ] \
     || ([ "$(echo "$WIFI_ADDR"| grep -Fo "$MY_WIFI_PATT")" == "$MY_WIFI_PATT" ] \
-    && [ "$(iwgetid -r | grep -Fo "$MY_SSID")" == "$MY_SSID" ]); then
+    && [ "$(iwgetid -r | grep -F "$MY_SSID")" == "$MY_SSID" ]); then
         # then we're at home!
         exit 0;
     else

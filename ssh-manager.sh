@@ -277,7 +277,7 @@ GATHER_INFORMATION() {
 
     # KEY_PATH as global variable?
     if $SSH_LOCAL; then
-        SSH_COMMAND="-i $KEY_PATH -p $LOC_PORT $USER@$LOCAL_IP"
+        SSH_COMMAND="-i $KEY_PATH -p $LOC_PORT $USER@$LOC_IP"
     else
         SSH_COMMAND="-i $KEY_PATH -p $PUB_PORT $USER@$PUB_IP"
     fi
