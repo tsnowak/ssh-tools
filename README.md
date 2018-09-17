@@ -1,5 +1,5 @@
 `verify_local_network` distinguishes whether you are sshing from within a local 
-network to make properly route the connection.
+network to properly route the connection.
 
 `ssh-manager.sh` helps add and remove `~/.ssh/config` entries and ssh-keys both 
 locally and remotely. 
